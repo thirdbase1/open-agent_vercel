@@ -41,7 +41,11 @@ function getWildcardHostPattern(host: string): string | null {
 function getAuthBaseURLFallback(): string | undefined {
   return (
     process.env.BETTER_AUTH_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined)
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : undefined)
   );
 }
 
@@ -159,6 +163,7 @@ export const auth = betterAuth({
     github: {
       clientId: process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ?? "",
       clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
+      redirectURI: process.env.GITHUB_REDIRECT_URI,
       mapProfileToUser: mapGitHubProfileToUser,
     },
   },
