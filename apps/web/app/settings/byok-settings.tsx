@@ -96,62 +96,91 @@ export function ByokSettings() {
 
   const handleAddConnection = async () => {
     try {
-      const headers = formData.headers
-        ? Object.fromEntries(formData.headers.split("\n").map(line => {
-            const [key, value] = line.split(":");
-            return [key.trim(), value.trim()];
-          }))
-        : {};
+      // Validate required fields
+      if (!formData.apiKey.trim()) {
+        console.error("[v0] API key is required");
+        return;
+      }
+      if (!formData.baseURL.trim()) {
+        console.error("[v0] Endpoint URL is required");
+        return;
+      }
+      if (!formData.name.trim()) {
+        console.error("[v0] Connection name is required");
+        return;
+      }
 
+      // Parse headers
+      const headers: Record<string, string> = {};
+      if (formData.headers && formData.headers.trim()) {
+        formData.headers.split("\n").forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed) {
+            const [key, ...valueParts] = trimmed.split(":");
+            if (key && valueParts.length > 0) {
+              headers[key.trim()] = valueParts.join(":").trim();
+            }
+          }
+        });
+      }
+
+      // Parse models
       const models = formData.models
         .split(",")
         .map(m => m.trim())
-        .filter(m => m);
+        .filter(m => m.length > 0);
 
       const res = await fetch("/api/byok", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: formData.id,
-          name: formData.name,
+          name: formData.name.trim(),
           format: formData.format,
-          baseURL: formData.baseURL,
-          apiKey: formData.apiKey,
-          headers,
+          baseURL: formData.baseURL.trim(),
+          apiKey: formData.apiKey.trim(),
+          headers: Object.keys(headers).length > 0 ? headers : undefined,
           models,
         }),
       });
 
-      if (res.ok) {
-        mutateConnections();
-        setShowAddDialog(false);
-        setFormData({
-          id: nanoid(),
-          name: "",
-          format: "gateway",
-          baseURL: "",
-          apiKey: "",
-          headers: "",
-          models: "",
-        });
-        setSelectedPreset("");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("[v0] Failed to add connection:", errorData.error || res.statusText);
+        return;
       }
+
+      mutateConnections();
+      setShowAddDialog(false);
+      setFormData({
+        id: nanoid(),
+        name: "",
+        format: "gateway",
+        baseURL: "",
+        apiKey: "",
+        headers: "",
+        models: "",
+      });
+      setSelectedPreset("");
     } catch (error) {
-      console.error("[v0] Error adding connection:", error);
+      console.error("[v0] Error adding connection:", error instanceof Error ? error.message : String(error));
     }
   };
 
   const handleDeleteConnection = async (id: string) => {
     try {
       const res = await fetch(`/api/byok?id=${id}`, { method: "DELETE" });
-      if (res.ok) {
-        mutateConnections();
-        if (activeConnectionId === id) {
-          setActiveConnectionId(null);
-        }
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("[v0] Failed to delete connection:", errorData.error || res.statusText);
+        return;
+      }
+      mutateConnections();
+      if (activeConnectionId === id) {
+        setActiveConnectionId(null);
       }
     } catch (error) {
-      console.error("[v0] Error deleting connection:", error);
+      console.error("[v0] Error deleting connection:", error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -162,11 +191,14 @@ export function ByokSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ connectionId: id }),
       });
-      if (res.ok) {
-        setActiveConnectionId(id);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("[v0] Failed to set active connection:", errorData.error || res.statusText);
+        return;
       }
+      setActiveConnectionId(id);
     } catch (error) {
-      console.error("[v0] Error setting active connection:", error);
+      console.error("[v0] Error setting active connection:", error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -370,13 +402,24 @@ export function ByokSettings() {
               />
             </div>
 
-            <div className="flex gap-2 justify-end pt-4">
-              <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleAddConnection} disabled={!formData.apiKey || !formData.baseURL}>
-                Add Connection
-              </Button>
+            <div className="space-y-2">
+              {(!formData.name.trim() || !formData.baseURL.trim() || !formData.apiKey.trim()) && (
+                <div className="flex gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>Connection name, endpoint URL, and API key are required.</span>
+                </div>
+              )}
+              <div className="flex gap-2 justify-end pt-4">
+                <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleAddConnection} 
+                  disabled={!formData.apiKey.trim() || !formData.baseURL.trim() || !formData.name.trim()}
+                >
+                  Add Connection
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
