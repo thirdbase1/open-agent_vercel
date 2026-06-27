@@ -4,7 +4,10 @@ import { isByokModelOptionId, parseByokModelOptionId } from "@/lib/byok";
 import { resolveAvailableModelId } from "@/lib/model-availability";
 import { type ModelVariant, resolveModelSelection } from "@/lib/model-variants";
 import { APP_DEFAULT_MODEL_ID } from "@/lib/models";
-import { resolveModelToGatewayConfig } from "@/lib/resolve-byok-model";
+import {
+  resolveGatewayModelToByok,
+  resolveModelToGatewayConfig,
+} from "@/lib/resolve-byok-model";
 
 interface ResolveChatModelSelectionParams {
   selectedModelId: string | null | undefined;
@@ -69,13 +72,28 @@ export async function resolveChatModelSelection({
 
     runtimeModelId = parsed.modelId;
   } else if (userId && byokConnections) {
-    // No explicit BYOK model, but an active connection may override the
-    // endpoint for the requested gateway model id.
-    config = resolveModelToGatewayConfig(
+    // A hardcoded/catalog gateway model was selected. If the user added a
+    // BYOK connection that includes a model with this same id (plus an
+    // endpoint + key), transparently route the request through their own
+    // endpoint. This takes priority over the global active connection so that
+    // per-model overrides are honored exactly as the user configured them.
+    const gatewayMatch = resolveGatewayModelToByok(
       availableModelId,
       byokConnections,
-      activeByokConnectionId || null,
     );
+
+    if (gatewayMatch) {
+      config = gatewayMatch.config;
+      runtimeModelId = gatewayMatch.modelId;
+    } else {
+      // Otherwise, an active connection may override the endpoint for all
+      // gateway models.
+      config = resolveModelToGatewayConfig(
+        availableModelId,
+        byokConnections,
+        activeByokConnectionId || null,
+      );
+    }
   }
 
   return {

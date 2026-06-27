@@ -147,4 +147,63 @@ describe("resolveChatModelSelection", () => {
 
     expect(selection).toEqual({ id: APP_DEFAULT_MODEL_ID });
   });
+
+  test("routes a hardcoded gateway model through BYOK when a matching model exists", async () => {
+    const byokConnections = [
+      {
+        id: "byok:conn1",
+        name: "My Anthropic",
+        format: "anthropic" as const,
+        baseURL: "https://my-proxy.example.com/v1",
+        apiKey: "sk-secret",
+        headers: {},
+        // Matches the provider-stripped form of "anthropic/claude-opus-4.6".
+        models: [{ modelId: "claude-opus-4.6" }],
+      },
+    ];
+
+    const selection = await resolveChatModelSelection({
+      selectedModelId: "anthropic/claude-opus-4.6",
+      modelVariants: [],
+      missingVariantLabel: "Selected model variant",
+      userId: "user-1",
+      byokConnections,
+      activeByokConnectionId: null,
+    });
+
+    // The native model id the user configured is sent to their endpoint.
+    expect(selection.id).toBe("claude-opus-4.6");
+    expect(selection.config).toEqual({
+      format: "anthropic",
+      baseURL: "https://my-proxy.example.com/v1",
+      apiKey: "sk-secret",
+      headers: {},
+    });
+  });
+
+  test("leaves a hardcoded gateway model on the default gateway when no BYOK match exists", async () => {
+    const byokConnections = [
+      {
+        id: "byok:conn1",
+        name: "My Anthropic",
+        format: "anthropic" as const,
+        baseURL: "https://my-proxy.example.com/v1",
+        apiKey: "sk-secret",
+        headers: {},
+        models: [{ modelId: "some-other-model" }],
+      },
+    ];
+
+    const selection = await resolveChatModelSelection({
+      selectedModelId: "anthropic/claude-opus-4.6",
+      modelVariants: [],
+      missingVariantLabel: "Selected model variant",
+      userId: "user-1",
+      byokConnections,
+      activeByokConnectionId: null,
+    });
+
+    expect(selection.id).toBe("anthropic/claude-opus-4.6");
+    expect(selection.config).toBeUndefined();
+  });
 });
