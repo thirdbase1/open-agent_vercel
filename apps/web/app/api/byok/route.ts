@@ -16,6 +16,43 @@ import {
 import { nanoid } from "nanoid";
 
 /**
+ * Strip the decrypted API key from a connection before returning it to the
+ * client. The browser must never receive raw keys — only `hasApiKey`.
+ */
+function toPublicConnection(conn: any) {
+  return {
+    id: conn.id,
+    name: conn.name,
+    format: conn.format,
+    baseURL: conn.baseURL,
+    headers: conn.headers,
+    models: conn.models ?? [],
+    hasApiKey: Boolean(conn.hasApiKey),
+  };
+}
+
+/**
+ * Normalize incoming models into the stored `{ modelId, name? }` shape.
+ * Accepts an array of strings (e.g. "claude-3-opus") or objects.
+ */
+function normalizeModels(input: unknown): { modelId: string; name?: string }[] {
+  if (!Array.isArray(input)) return [];
+  const models: { modelId: string; name?: string }[] = [];
+  for (const item of input) {
+    if (typeof item === "string") {
+      const modelId = item.trim();
+      if (modelId) models.push({ modelId });
+    } else if (item && typeof item === "object" && typeof (item as any).modelId === "string") {
+      const modelId = (item as any).modelId.trim();
+      if (!modelId) continue;
+      const name = typeof (item as any).name === "string" ? (item as any).name.trim() : undefined;
+      models.push(name ? { modelId, name } : { modelId });
+    }
+  }
+  return models;
+}
+
+/**
  * GET /api/byok
  * Fetch all BYOK connections and the active connection ID for the current user.
  * Returns public data only (no API keys).
@@ -31,7 +68,7 @@ export async function GET() {
     const activeConnectionId = await getActiveByokConnectionId(session.user.id);
 
     return Response.json({
-      connections,
+      connections: connections.map(toPublicConnection),
       activeConnectionId: activeConnectionId || null,
     });
   } catch (error) {
@@ -71,7 +108,7 @@ export async function POST(request: Request) {
     }
 
     // Models can be an array of strings or array of objects
-    const models = Array.isArray(body.models) ? body.models : [];
+    const models = normalizeModels(body.models);
 
     const connectionId = `byok:${nanoid()}`;
     const created = await upsertByokConnection(session.user.id, {
@@ -84,7 +121,7 @@ export async function POST(request: Request) {
       models: models,
     });
 
-    return Response.json(created, { status: 201 });
+    return Response.json(toPublicConnection(created), { status: 201 });
   } catch (error) {
     console.error("[BYOK POST]", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -129,7 +166,7 @@ export async function PATCH(request: Request) {
       models: input.models ?? existing.models,
     });
 
-    return Response.json(updated);
+    return Response.json(toPublicConnection(updated));
   } catch (error) {
     if (error instanceof Error && error.message.includes("validation")) {
       return Response.json(

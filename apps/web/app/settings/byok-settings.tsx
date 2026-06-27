@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { BYOK_PROVIDER_PRESETS, byokFormatSchema } from "@/lib/byok";
-import type { ByokFormat } from "@/lib/byok";
+import type { ByokFormat, ByokModel } from "@/lib/byok";
 
 interface ByokConnection {
   id: string;
@@ -29,7 +29,7 @@ interface ByokConnection {
   format: ByokFormat;
   baseURL: string;
   headers?: Record<string, string>;
-  models: string[];
+  models: ByokModel[];
   hasApiKey: boolean;
 }
 
@@ -82,6 +82,10 @@ export function ByokSettings() {
   }, [active]);
 
   const handlePresetSelect = (presetId: string) => {
+    if (presetId === "none") {
+      setSelectedPreset("none");
+      return;
+    }
     const preset = BYOK_PROVIDER_PRESETS[presetId];
     if (preset) {
       setFormData({
@@ -246,7 +250,12 @@ export function ByokSettings() {
                       </div>
                       <p className="text-sm text-gray-600 mb-2">{conn.baseURL}</p>
                       <p className="text-xs text-gray-500">
-                        Models: {conn.models.join(", ") || "Add at least one model"}
+                        Models:{" "}
+                        {conn.models.length > 0
+                          ? conn.models
+                              .map((m) => m.name || m.modelId)
+                              .join(", ")
+                          : "Add at least one model"}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -307,7 +316,7 @@ export function ByokSettings() {
                   <SelectValue placeholder="Select a preset to auto-fill..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None - Custom</SelectItem>
+                  <SelectItem value="none">None - Custom</SelectItem>
                   {Object.entries(BYOK_PROVIDER_PRESETS).map(([key, preset]) => (
                     <SelectItem key={key} value={key}>
                       {preset.name}
