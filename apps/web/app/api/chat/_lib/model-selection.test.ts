@@ -102,4 +102,49 @@ describe("resolveChatModelSelection", () => {
       id: APP_DEFAULT_MODEL_ID,
     });
   });
+
+  test("resolves a BYOK model id to the provider-native model id and config", async () => {
+    const byokConnections = [
+      {
+        id: "byok:conn1",
+        name: "My Claude",
+        format: "anthropic" as const,
+        baseURL: "https://api.anthropic.com/v1",
+        apiKey: "sk-secret",
+        headers: { "x-extra": "1" },
+        models: [{ modelId: "claude-3-opus" }],
+      },
+    ];
+
+    const selection = await resolveChatModelSelection({
+      selectedModelId: "byok:model:conn1:claude-3-opus",
+      modelVariants: [],
+      missingVariantLabel: "Selected model variant",
+      userId: "user-1",
+      byokConnections,
+      activeByokConnectionId: null,
+    });
+
+    // The provider must receive the native model id, NOT the composite id.
+    expect(selection.id).toBe("claude-3-opus");
+    expect(selection.config).toEqual({
+      format: "anthropic",
+      baseURL: "https://api.anthropic.com/v1",
+      apiKey: "sk-secret",
+      headers: { "x-extra": "1" },
+    });
+  });
+
+  test("falls back to the default model when a BYOK connection is missing", async () => {
+    const selection = await resolveChatModelSelection({
+      selectedModelId: "byok:model:deleted:claude-3-opus",
+      modelVariants: [],
+      missingVariantLabel: "Selected model variant",
+      userId: "user-1",
+      byokConnections: [],
+      activeByokConnectionId: null,
+    });
+
+    expect(selection).toEqual({ id: APP_DEFAULT_MODEL_ID });
+  });
 });
