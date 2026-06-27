@@ -24,8 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -67,7 +66,7 @@ const initialFormState: ByokFormState = {
 export function ByokSection() {
   const { data: connections, isLoading, mutate } = useSWR<ByokConnection[]>(
     '/api/settings/byok',
-    async (url) => {
+    async (url: string) => {
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch BYOK connections');
       return res.json();
@@ -76,7 +75,7 @@ export function ByokSection() {
 
   const { data: activeConnectionId } = useSWR<string | null>(
     '/api/settings/byok/active',
-    async (url) => {
+    async (url: string) => {
       const res = await fetch(url);
       if (!res.ok) return null;
       const data = await res.json();
@@ -244,13 +243,18 @@ export function ByokSection() {
         </p>
       </div>
 
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          API keys are encrypted at rest and never returned to your browser.
-          Active connection routes all compatible models through that endpoint.
-        </AlertDescription>
-      </Alert>
+      <Card className="border-blue-200 bg-blue-50 p-4">
+        <div className="flex gap-3">
+          <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-900">
+            <p className="font-medium mb-1">Security</p>
+            <p className="text-blue-800">
+              API keys are encrypted at rest and never returned to your browser.
+              Active connection routes all compatible models through that endpoint.
+            </p>
+          </div>
+        </div>
+      </Card>
 
       <div className="grid gap-4">
         {!connections || connections.length === 0 ? (

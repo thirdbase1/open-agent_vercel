@@ -7,6 +7,7 @@ import {
   normalizeGlobalSkillRefs,
   type GlobalSkillRef,
 } from "@/lib/skills/global-skill-refs";
+import { decryptSecret, encryptSecret } from "@/lib/byok-crypto";
 import { db } from "./client";
 import { userPreferences, type UserPreferences } from "./schema";
 
@@ -188,4 +189,176 @@ export async function updateUserPreferences(
     .returning();
 
   return toUserPreferencesData(created);
+}
+
+/**
+ * Get BYOK connections for a user, with API keys decrypted.
+ * Server-side only: returns connections with decrypted keys.
+ */
+export async function getByokConnections(userId: string) {
+  const [existing] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+    .limit(1);
+
+  if (!existing?.byokConnections || existing.byokConnections.length === 0) {
+    return [];
+  }
+
+  return (existing.byokConnections as any[]).map((conn: any) => ({
+    id: conn.id,
+    name: conn.name,
+    format: conn.format,
+    baseURL: conn.baseURL,
+    headers: conn.headers,
+    models: conn.models,
+    hasApiKey: conn.apiKeyEnc && conn.apiKeyEnc.length > 0,
+    apiKey:
+      conn.apiKeyEnc && conn.apiKeyEnc.length > 0
+        ? decryptSecret(conn.apiKeyEnc)
+        : null,
+  }));
+}
+
+/**
+ * Get a single BYOK connection by ID, with API key decrypted.
+ */
+export async function getByokConnection(userId: string, connectionId: string) {
+  const connections = await getByokConnections(userId);
+  return connections.find((c: any) => c.id === connectionId) ?? null;
+}
+
+/**
+ * Get the active BYOK connection (if any), with API key decrypted.
+ */
+export async function getActiveByokConnection(userId: string) {
+  const [existing] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+    .limit(1);
+
+  const activeId = existing?.byokActiveConnectionId;
+  if (!activeId) {
+    return null;
+  }
+
+  return getByokConnection(userId, activeId);
+}
+
+/**
+ * Set the active BYOK connection. Pass null to clear.
+ */
+export async function setActiveByokConnection(
+  userId: string,
+  connectionId: string | null,
+) {
+  await db
+    .update(userPreferences)
+    .set({
+      byokActiveConnectionId: connectionId,
+      updatedAt: new Date(),
+    })
+    .where(eq(userPreferences.userId, userId));
+}
+
+/**
+ * Add or update a BYOK connection.
+ */
+export async function upsertByokConnection(
+  userId: string,
+  connWithApiKey: any,
+) {
+  const [existing] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+    .limit(1);
+
+  const connections = (existing?.byokConnections ?? []) as any[];
+  const idx = connections.findIndex((c) => c.id === connWithApiKey.id);
+
+  let storedConn;
+  if (idx >= 0) {
+    const existingKey = connections[idx]?.apiKeyEnc;
+    storedConn = {
+      id: connWithApiKey.id,
+      name: connWithApiKey.name,
+      format: connWithApiKey.format,
+      baseURL: connWithApiKey.baseURL,
+      headers: connWithApiKey.headers,
+      models: connWithApiKey.models,
+      apiKeyEnc:
+        connWithApiKey.apiKey && connWithApiKey.apiKey.length > 0
+          ? encryptSecret(connWithApiKey.apiKey)
+          : existingKey ?? null,
+    };
+    connections[idx] = storedConn;
+  } else {
+    storedConn = {
+      id: connWithApiKey.id,
+      name: connWithApiKey.name,
+      format: connWithApiKey.format,
+      baseURL: connWithApiKey.baseURL,
+      headers: connWithApiKey.headers,
+      models: connWithApiKey.models,
+      apiKeyEnc:
+        connWithApiKey.apiKey && connWithApiKey.apiKey.length > 0
+          ? encryptSecret(connWithApiKey.apiKey)
+          : null,
+    };
+    connections.push(storedConn);
+  }
+
+  await db
+    .update(userPreferences)
+    .set({
+      byokConnections: connections,
+      updatedAt: new Date(),
+    })
+    .where(eq(userPreferences.userId, userId));
+
+  return {
+    id: storedConn.id,
+    name: storedConn.name,
+    format: storedConn.format,
+    baseURL: storedConn.baseURL,
+    headers: storedConn.headers,
+    models: storedConn.models,
+    hasApiKey: storedConn.apiKeyEnc && storedConn.apiKeyEnc.length > 0,
+    apiKey:
+      storedConn.apiKeyEnc && storedConn.apiKeyEnc.length > 0
+        ? decryptSecret(storedConn.apiKeyEnc)
+        : null,
+  };
+}
+
+/**
+ * Delete a BYOK connection by ID.
+ */
+export async function deleteByokConnection(userId: string, connectionId: string) {
+  const [existing] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+    .limit(1);
+
+  const connections = (
+    (existing?.byokConnections ?? []) as any[]
+  ).filter((c) => c.id !== connectionId);
+
+  const updates: any = {
+    byokConnections: connections,
+    updatedAt: new Date(),
+  };
+
+  if (existing?.byokActiveConnectionId === connectionId) {
+    updates.byokActiveConnectionId = null;
+  }
+
+  await db
+    .update(userPreferences)
+    .set(updates)
+    .where(eq(userPreferences.userId, userId));
 }

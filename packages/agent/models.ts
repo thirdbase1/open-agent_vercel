@@ -244,6 +244,7 @@ export function gateway(
   );
 
   if (Object.keys(providerOptions).length > 0) {
+    // @ts-ignore - wrapLanguageModel returns a compatible model type
     model = wrapLanguageModel({
       model,
       middleware: defaultSettingsMiddleware({
