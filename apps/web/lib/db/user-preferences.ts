@@ -362,3 +362,16 @@ export async function deleteByokConnection(userId: string, connectionId: string)
     .set(updates)
     .where(eq(userPreferences.userId, userId));
 }
+
+/**
+ * Get the currently active BYOK connection ID, or null if none is set.
+ */
+export async function getActiveByokConnectionId(userId: string): Promise<string | null> {
+  const [existing] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+    .limit(1);
+
+  return existing?.byokActiveConnectionId ?? null;
+}

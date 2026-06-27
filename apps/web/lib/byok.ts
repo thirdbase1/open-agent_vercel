@@ -17,6 +17,7 @@ export const byokFormatSchema = z.enum([
   "gateway",
   "openai-compatible",
   "anthropic",
+  "gemini",
 ]);
 export type ByokFormat = z.infer<typeof byokFormatSchema>;
 
@@ -314,6 +315,13 @@ export const BYOK_PROVIDER_PRESETS: Record<string, ByokProviderPreset> = {
   },
 
   // Anthropic format providers
+  "anthropic-claude": {
+    name: "Anthropic Claude",
+    description: "Claude models via native Anthropic Messages API",
+    format: "anthropic",
+    baseURL: "https://api.anthropic.com/v1",
+    documentationUrl: "https://docs.anthropic.com/claude/reference/getting-started-with-the-api",
+  },
   "deepseek-anthropic": {
     name: "DeepSeek (Anthropic format)",
     description: "DeepSeek API via Anthropic Messages protocol",
@@ -329,22 +337,13 @@ export const BYOK_PROVIDER_PRESETS: Record<string, ByokProviderPreset> = {
     documentationUrl: "https://docs.z.ai/devpack/tool/others",
   },
 
-  // Native provider SDKs (format: "gateway" routes via Vercel AI Gateway base)
-  "google-gemini": {
+  // Google Gemini (native format)
+  "gemini-native": {
     name: "Google Gemini",
-    description:
-      "Gemini 3 and latest models - uses @ai-sdk/google with Vercel AI Gateway",
-    format: "gateway",
-    baseURL: "https://api.openrouter.ai/api/v1", // Routed through gateway
-    documentationUrl: "https://ai-sdk.dev/providers/ai-sdk-providers/google",
-  },
-  "anthropic-native": {
-    name: "Anthropic (Native)",
-    description:
-      "Claude models - uses @ai-sdk/anthropic with Vercel AI Gateway",
-    format: "gateway",
-    baseURL: "https://api.openrouter.ai/api/v1",
-    documentationUrl: "https://ai-sdk.dev/providers/ai-sdk-providers/anthropic",
+    description: "Gemini 2 Flash, Gemini 3 Pro, and latest models",
+    format: "gemini",
+    baseURL: "https://generativelanguage.googleapis.com/v1beta",
+    documentationUrl: "https://ai.google.dev/gemini-api/docs/api-key",
   },
   "azure-openai": {
     name: "Azure OpenAI",

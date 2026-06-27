@@ -8,6 +8,7 @@ import {
 } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import type { AnthropicLanguageModelOptions } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { OpenAIResponsesProviderOptions } from "@ai-sdk/openai";
 
@@ -96,7 +97,7 @@ export function mergeProviderOptions(
  *   (OpenRouter, DeepSeek, Qwen, GLM, MiniMax, xAI, Gemini OpenAI mode, etc.).
  * - "anthropic": native Claude Messages API (`/v1/messages`).
  */
-export type GatewayFormat = "gateway" | "openai-compatible" | "anthropic";
+export type GatewayFormat = "gateway" | "openai-compatible" | "anthropic" | "gemini";
 
 export interface GatewayConfig {
   baseURL: string;
@@ -212,6 +213,15 @@ function buildBaseModel(
     const provider = createAnthropic({
       baseURL: config.baseURL,
       apiKey: config.apiKey,
+      headers: mergedHeaders,
+    });
+    return provider(modelId);
+  }
+
+  if (format === "gemini") {
+    const provider = createGoogleGenerativeAI({
+      apiKey: config.apiKey,
+      baseURL: config.baseURL,
       headers: mergedHeaders,
     });
     return provider(modelId);
