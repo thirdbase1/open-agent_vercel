@@ -3,6 +3,7 @@ import { stepCountIs, ToolLoopAgent, type ToolSet } from "ai";
 import { z } from "zod";
 import { addCacheControl } from "./context-management";
 import {
+  type GatewayConfig,
   type GatewayModelId,
   gateway,
   type ProviderOptionsByProvider,
@@ -27,6 +28,11 @@ import {
 export interface AgentModelSelection {
   id: GatewayModelId;
   providerOptionsOverrides?: ProviderOptionsByProvider;
+  /**
+   * Optional BYOK endpoint configuration. When present, the model is built
+   * against the user's own endpoint + key instead of the default gateway.
+   */
+  config?: GatewayConfig;
 }
 
 export type OpenAgentModelInput = GatewayModelId | AgentModelSelection;
@@ -105,10 +111,14 @@ export const openAgent = new ToolLoopAgent({
 
     const callModel = gateway(mainSelection.id, {
       providerOptionsOverrides: mainSelection.providerOptionsOverrides,
+      ...(mainSelection.config ? { config: mainSelection.config } : {}),
     });
     const subagentModel = subagentSelection
       ? gateway(subagentSelection.id, {
           providerOptionsOverrides: subagentSelection.providerOptionsOverrides,
+          ...(subagentSelection.config
+            ? { config: subagentSelection.config }
+            : {}),
         })
       : undefined;
     const customInstructions = options.customInstructions;
