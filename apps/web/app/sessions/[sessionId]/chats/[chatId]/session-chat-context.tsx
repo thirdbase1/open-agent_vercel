@@ -33,6 +33,7 @@ import {
 } from "@/hooks/use-session-git-status";
 import { useSessionSkills } from "@/hooks/use-session-skills";
 import type { Chat, Session } from "@/lib/db/schema";
+import { isByokModelOptionId } from "@/lib/byok";
 import { type ModelOption, withMissingModelOption } from "@/lib/model-options";
 import {
   clearSandboxResumeState,
@@ -325,7 +326,12 @@ export function SessionChatProvider({
     }
     const enabledSet = new Set(enabledModelIds);
     return allModelOptions.filter(
-      (option) => enabledSet.has(option.id) || option.id === chatInfo.modelId,
+      (option) =>
+        enabledSet.has(option.id) ||
+        option.id === chatInfo.modelId ||
+        // BYOK models are user-provided and always available in the picker;
+        // they are not part of the gateway "enabled models" allow-list.
+        isByokModelOptionId(option.id),
     );
   }, [allModelOptions, enabledModelIds, chatInfo.modelId]);
   const modelOptions = useMemo(
