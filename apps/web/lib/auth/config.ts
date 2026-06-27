@@ -155,6 +155,12 @@ export const auth = betterAuth({
       scope: ["openid", "email", "profile", "offline_access"],
       overrideUserInfoOnSignIn: true,
       mapProfileToUser: mapVercelProfileToUser,
+      redirectURI: `${
+        process.env.BETTER_AUTH_URL ??
+        (process.env.VERCEL_PROJECT_PRODUCTION_URL
+          ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+          : undefined)
+      }/api/auth/callback/vercel`,
     },
     github: {
       clientId: process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ?? "",
