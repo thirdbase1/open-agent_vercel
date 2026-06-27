@@ -3,6 +3,7 @@
 import {
   ArrowLeft,
   Cable,
+  Key,
   LogOut,
   Menu,
   Settings as SettingsIcon,
@@ -82,6 +83,12 @@ const baseSidebarItems = [
     label: "Connections",
     href: "/settings/connections",
     icon: Cable,
+  },
+  {
+    id: "byok",
+    label: "API Keys",
+    href: "/settings/byok",
+    icon: Key,
   },
   {
     id: "models",

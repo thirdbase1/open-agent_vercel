@@ -56,6 +56,10 @@ import type {
 } from "@/lib/db/workflow-runs";
 import { resolveChatModelSelection } from "../api/chat/_lib/model-selection";
 import { resolveChatSandboxRuntime } from "./chat-sandbox-runtime";
+import {
+  getByokConnections,
+  getActiveByokConnectionId,
+} from "@/lib/db/user-preferences";
 
 type AuthSessionContext = Pick<AuthSession, "authProvider" | "user"> | null;
 
@@ -149,11 +153,19 @@ async function resolveChatModelRuntime(params: {
 }): Promise<ChatModelRuntime> {
   "use step";
 
-  const [sessionRecord, chat, rawPreferences] = await Promise.all([
+  const [sessionRecord, chat, rawPreferences, byokConnections, activeByokConnectionId] = await Promise.all([
     getSessionById(params.sessionId),
     getChatById(params.chatId),
     getUserPreferences(params.userId).catch((error) => {
       console.error("Failed to load user preferences:", error);
+      return null;
+    }),
+    getByokConnections(params.userId).catch((error) => {
+      console.error("[v0] Failed to load BYOK connections:", error);
+      return [];
+    }),
+    getActiveByokConnectionId(params.userId).catch((error) => {
+      console.error("[v0] Failed to load active BYOK connection:", error);
       return null;
     }),
   ]);
@@ -189,13 +201,16 @@ async function resolveChatModelRuntime(params: {
     ) ??
     chat.modelId ??
     null;
-  const mainModelSelection = resolveChatModelSelection({
+  const mainModelSelection = await resolveChatModelSelection({
     selectedModelId,
     modelVariants,
     missingVariantLabel: "Selected model variant",
+    userId: params.userId,
+    byokConnections,
+    activeByokConnectionId,
   });
   const subagentModelSelection = preferences?.defaultSubagentModelId
-    ? resolveChatModelSelection({
+    ? await resolveChatModelSelection({
         selectedModelId: sanitizeSelectedModelIdForSession(
           preferences.defaultSubagentModelId,
           modelVariants,
@@ -204,6 +219,9 @@ async function resolveChatModelRuntime(params: {
         ),
         modelVariants,
         missingVariantLabel: "Subagent model variant",
+        userId: params.userId,
+        byokConnections,
+        activeByokConnectionId,
       })
     : undefined;
   const autoCommitEnabled =
