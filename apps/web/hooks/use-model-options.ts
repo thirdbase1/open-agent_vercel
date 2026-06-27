@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import useSWR from "swr";
 import { buildModelOptions, type ModelOption } from "@/lib/model-options";
+import type { ByokConnection } from "@/lib/byok";
 import type { AvailableModel } from "@/lib/models";
 import type { ModelVariant } from "@/lib/model-variants";
 import { fetcher } from "@/lib/swr";
@@ -15,12 +16,18 @@ interface ModelVariantsResponse {
   modelVariants: ModelVariant[];
 }
 
+interface ByokResponse {
+  connections: ByokConnection[];
+  activeConnectionId: string | null;
+}
+
 interface UseModelOptionsConfig {
   initialModelOptions?: ModelOption[];
 }
 
 const EMPTY_MODELS: AvailableModel[] = [];
 const EMPTY_MODEL_VARIANTS: ModelVariant[] = [];
+const EMPTY_BYOK_CONNECTIONS: ByokConnection[] = [];
 const EMPTY_MODEL_OPTIONS: ModelOption[] = [];
 
 export function useModelOptions(config: UseModelOptionsConfig = {}) {
@@ -36,15 +43,20 @@ export function useModelOptions(config: UseModelOptionsConfig = {}) {
     isLoading: variantsLoading,
   } = useSWR<ModelVariantsResponse>("/api/settings/model-variants", fetcher);
 
+  // BYOK connections are optional: a failure here must never block the base
+  // model list, so its error/loading state is intentionally not surfaced.
+  const { data: byokData } = useSWR<ByokResponse>("/api/byok", fetcher);
+
   const models = modelsData?.models ?? EMPTY_MODELS;
   const modelVariants = variantsData?.modelVariants ?? EMPTY_MODEL_VARIANTS;
+  const byokConnections = byokData?.connections ?? EMPTY_BYOK_CONNECTIONS;
   const initialModelOptions = config.initialModelOptions ?? EMPTY_MODEL_OPTIONS;
   const hasCompleteFetchedData =
     modelsData !== undefined && variantsData !== undefined;
 
   const fetchedModelOptions = useMemo<ModelOption[]>(
-    () => buildModelOptions(models, modelVariants),
-    [models, modelVariants],
+    () => buildModelOptions(models, modelVariants, byokConnections),
+    [models, modelVariants, byokConnections],
   );
 
   const modelOptions =

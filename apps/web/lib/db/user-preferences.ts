@@ -192,6 +192,57 @@ export async function updateUserPreferences(
 }
 
 /**
+ * Ensure a userPreferences row exists for the user, creating one with defaults
+ * if missing. Returns the existing or newly created row. This is required
+ * because BYOK mutations use `UPDATE ... WHERE user_id = ?`, which silently
+ * affects zero rows when the user has never saved any preferences.
+ */
+async function ensureUserPreferencesRow(userId: string) {
+  const [existing] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+    .limit(1);
+
+  if (existing) {
+    return existing;
+  }
+
+  const [created] = await db
+    .insert(userPreferences)
+    .values({
+      id: nanoid(),
+      userId,
+      defaultModelId: DEFAULT_PREFERENCES.defaultModelId,
+      defaultSubagentModelId: DEFAULT_PREFERENCES.defaultSubagentModelId,
+      defaultSandboxType: DEFAULT_PREFERENCES.defaultSandboxType,
+      defaultDiffMode: DEFAULT_PREFERENCES.defaultDiffMode,
+      autoCommitPush: DEFAULT_PREFERENCES.autoCommitPush,
+      autoCreatePr: DEFAULT_PREFERENCES.autoCreatePr,
+      alertsEnabled: DEFAULT_PREFERENCES.alertsEnabled,
+      alertSoundEnabled: DEFAULT_PREFERENCES.alertSoundEnabled,
+      publicUsageEnabled: DEFAULT_PREFERENCES.publicUsageEnabled,
+      globalSkillRefs: DEFAULT_PREFERENCES.globalSkillRefs,
+      modelVariants: DEFAULT_PREFERENCES.modelVariants,
+      enabledModelIds: DEFAULT_PREFERENCES.enabledModelIds,
+    })
+    .onConflictDoNothing({ target: userPreferences.userId })
+    .returning();
+
+  if (created) {
+    return created;
+  }
+
+  // A concurrent insert won the race; fetch the row that now exists.
+  const [row] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+    .limit(1);
+  return row;
+}
+
+/**
  * Get BYOK connections for a user, with API keys decrypted.
  * Server-side only: returns connections with decrypted keys.
  */
@@ -254,6 +305,7 @@ export async function setActiveByokConnection(
   userId: string,
   connectionId: string | null,
 ) {
+  await ensureUserPreferencesRow(userId);
   await db
     .update(userPreferences)
     .set({
@@ -270,11 +322,7 @@ export async function upsertByokConnection(
   userId: string,
   connWithApiKey: any,
 ) {
-  const [existing] = await db
-    .select()
-    .from(userPreferences)
-    .where(eq(userPreferences.userId, userId))
-    .limit(1);
+  const existing = await ensureUserPreferencesRow(userId);
 
   const connections = (existing?.byokConnections ?? []) as any[];
   const idx = connections.findIndex((c) => c.id === connWithApiKey.id);
