@@ -236,7 +236,7 @@ export function gateway(
     "x-title": appName ?? "Open Agents",
   };
 
-  let model: LanguageModel = buildBaseModel(modelId, config, attributionHeaders);
+  let model: any = buildBaseModel(modelId, config, attributionHeaders);
 
   const providerOptions = getProviderOptionsForModel(
     modelId,
@@ -244,7 +244,6 @@ export function gateway(
   );
 
   if (Object.keys(providerOptions).length > 0) {
-    // @ts-ignore - wrapLanguageModel returns a compatible model type
     model = wrapLanguageModel({
       model,
       middleware: defaultSettingsMiddleware({
