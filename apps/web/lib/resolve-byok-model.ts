@@ -61,7 +61,7 @@ export function resolveModelToGatewayConfig(
  * e.g. "anthropic/claude-opus-4.6" -> "claude-opus-4.6". Returns the input
  * unchanged when there is no slash.
  */
-function stripGatewayProviderPrefix(modelId: string): string {
+export function stripGatewayProviderPrefix(modelId: string): string {
   const slashIndex = modelId.indexOf("/");
   return slashIndex >= 0 ? modelId.slice(slashIndex + 1) : modelId;
 }

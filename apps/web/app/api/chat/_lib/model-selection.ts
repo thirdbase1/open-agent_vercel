@@ -7,6 +7,7 @@ import { APP_DEFAULT_MODEL_ID } from "@/lib/models";
 import {
   resolveGatewayModelToByok,
   resolveModelToGatewayConfig,
+  stripGatewayProviderPrefix,
 } from "@/lib/resolve-byok-model";
 
 interface ResolveChatModelSelectionParams {
@@ -93,6 +94,16 @@ export async function resolveChatModelSelection({
         byokConnections,
         activeByokConnectionId || null,
       );
+
+      // A BYOK connection always targets a real provider endpoint (anthropic,
+      // openai-compatible, gemini), which expects the provider-native model id
+      // WITHOUT the gateway "provider/" prefix. So when the active connection
+      // routes a catalog model (e.g. "anthropic/claude-opus-4.6") through the
+      // user's endpoint, send the stripped id ("claude-opus-4.6"). This lets a
+      // single Anthropic connection serve ANY Anthropic model in the picker.
+      if (config) {
+        runtimeModelId = stripGatewayProviderPrefix(availableModelId);
+      }
     }
   }
 

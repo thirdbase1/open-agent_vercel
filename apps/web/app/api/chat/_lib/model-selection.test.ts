@@ -206,4 +206,37 @@ describe("resolveChatModelSelection", () => {
     expect(selection.id).toBe("anthropic/claude-opus-4.6");
     expect(selection.config).toBeUndefined();
   });
+
+  test("active connection routes any catalog model and strips the provider prefix", async () => {
+    const byokConnections = [
+      {
+        id: "byok:conn1",
+        name: "My Anthropic",
+        format: "anthropic" as const,
+        baseURL: "https://api.anthropic.com/v1",
+        apiKey: "sk-secret",
+        headers: {},
+        models: [],
+      },
+    ];
+
+    const selection = await resolveChatModelSelection({
+      selectedModelId: "anthropic/claude-sonnet-4.5",
+      modelVariants: [],
+      missingVariantLabel: "Selected model variant",
+      userId: "user-1",
+      byokConnections,
+      activeByokConnectionId: "byok:conn1",
+    });
+
+    // Active connection applies to any model; the gateway prefix is stripped so
+    // the real Anthropic endpoint receives a native model id.
+    expect(selection.id).toBe("claude-sonnet-4.5");
+    expect(selection.config).toEqual({
+      format: "anthropic",
+      baseURL: "https://api.anthropic.com/v1",
+      apiKey: "sk-secret",
+      headers: {},
+    });
+  });
 });
