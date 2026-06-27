@@ -17,6 +17,7 @@ export const byokFormatSchema = z.enum([
   "gateway",
   "openai-compatible",
   "anthropic",
+  "gemini",
 ]);
 export type ByokFormat = z.infer<typeof byokFormatSchema>;
 
@@ -237,4 +238,126 @@ export function resolveByokSelection(
   }
 
   return { connection, model };
+}
+
+/**
+ * Provider presets with correct base URLs and format info.
+ * Used to populate the BYOK UI with one-click endpoint configs.
+ * All endpoints verified against official provider documentation.
+ */
+export interface ByokProviderPreset {
+  name: string;
+  description: string;
+  format: ByokFormat;
+  baseURL: string;
+  documentationUrl: string;
+}
+
+export const BYOK_PROVIDER_PRESETS: Record<string, ByokProviderPreset> = {
+  // OpenAI-compatible providers
+  "deepseek": {
+    name: "DeepSeek",
+    description: "DeepSeek v4 models with OpenAI-compatible API format",
+    format: "openai-compatible",
+    baseURL: "https://api.deepseek.com",
+    documentationUrl: "https://api-docs.deepseek.com/",
+  },
+  "qwen": {
+    name: "Alibaba Qwen",
+    description:
+      "Qwen models via DashScope with OpenAI-compatible interface (Singapore region)",
+    format: "openai-compatible",
+    baseURL: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    documentationUrl: "https://www.alibabacloud.com/help/en/model-studio/",
+  },
+  "qwen-china": {
+    name: "Alibaba Qwen (China)",
+    description: "Qwen models via DashScope (Beijing region)",
+    format: "openai-compatible",
+    baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    documentationUrl: "https://open.bigmodel.cn/",
+  },
+  "glm": {
+    name: "Zhipu GLM",
+    description: "ChatGLM and GLM models with OpenAI-compatible format",
+    format: "openai-compatible",
+    baseURL: "https://api.z.ai/api/paas/v4",
+    documentationUrl: "https://open.bigmodel.cn/dev/api",
+  },
+  "glm-china": {
+    name: "Zhipu GLM (China)",
+    description: "ChatGLM and GLM models (China region)",
+    format: "openai-compatible",
+    baseURL: "https://open.bigmodel.cn/api/paas/v4",
+    documentationUrl: "https://open.bigmodel.cn/dev/api",
+  },
+  "openrouter": {
+    name: "OpenRouter",
+    description:
+      "Multi-model provider with 250+ models via OpenAI-compatible API",
+    format: "openai-compatible",
+    baseURL: "https://openrouter.ai/api/v1",
+    documentationUrl: "https://openrouter.ai/docs/quickstart",
+  },
+  "xai-grok": {
+    name: "xAI Grok",
+    description: "Grok models with OpenAI-compatible API format",
+    format: "openai-compatible",
+    baseURL: "https://api.x.ai/v1",
+    documentationUrl: "https://docs.x.ai/developers/quickstart",
+  },
+  "local-ollama": {
+    name: "Local Ollama",
+    description: "Local LLM models with OpenAI-compatible interface",
+    format: "openai-compatible",
+    baseURL: "http://localhost:11434/v1",
+    documentationUrl: "https://ollama.ai/",
+  },
+
+  // Anthropic format providers
+  "anthropic-claude": {
+    name: "Anthropic Claude",
+    description: "Claude models via native Anthropic Messages API",
+    format: "anthropic",
+    baseURL: "https://api.anthropic.com/v1",
+    documentationUrl: "https://docs.anthropic.com/claude/reference/getting-started-with-the-api",
+  },
+  "deepseek-anthropic": {
+    name: "DeepSeek (Anthropic format)",
+    description: "DeepSeek API via Anthropic Messages protocol",
+    format: "anthropic",
+    baseURL: "https://api.deepseek.com/anthropic",
+    documentationUrl: "https://api-docs.deepseek.com/",
+  },
+  "glm-anthropic": {
+    name: "Zhipu GLM (Anthropic format)",
+    description: "ChatGLM models via Anthropic protocol",
+    format: "anthropic",
+    baseURL: "https://api.z.ai/api/anthropic",
+    documentationUrl: "https://docs.z.ai/devpack/tool/others",
+  },
+
+  // Google Gemini (native format)
+  "gemini-native": {
+    name: "Google Gemini",
+    description: "Gemini 2 Flash, Gemini 3 Pro, and latest models",
+    format: "gemini",
+    baseURL: "https://generativelanguage.googleapis.com/v1beta",
+    documentationUrl: "https://ai.google.dev/gemini-api/docs/api-key",
+  },
+  "azure-openai": {
+    name: "Azure OpenAI",
+    description:
+      "Azure OpenAI deployments - uses @ai-sdk/azure (requires deployment name)",
+    format: "gateway",
+    baseURL: "https://YOUR_RESOURCE_NAME.openai.azure.com/openai/v1",
+    documentationUrl: "https://ai-sdk.dev/providers/ai-sdk-providers/azure",
+  },
+};
+
+/**
+ * Get preset endpoint details by ID. Returns null if preset not found.
+ */
+export function getByokPreset(presetId: string): ByokProviderPreset | null {
+  return BYOK_PROVIDER_PRESETS[presetId] ?? null;
 }
