@@ -1,19 +1,27 @@
 import type { AgentModelSelection } from "@open-agents/agent";
+import type { GatewayConfig } from "@open-agents/agent";
 import { resolveAvailableModelId } from "@/lib/model-availability";
 import { type ModelVariant, resolveModelSelection } from "@/lib/model-variants";
 import { APP_DEFAULT_MODEL_ID } from "@/lib/models";
+import { resolveModelToGatewayConfig } from "@/lib/resolve-byok-model";
 
 interface ResolveChatModelSelectionParams {
   selectedModelId: string | null | undefined;
   modelVariants: ModelVariant[];
   missingVariantLabel: string;
+  userId?: string;
+  byokConnections?: any[];
+  activeByokConnectionId?: string | null;
 }
 
-export function resolveChatModelSelection({
+export async function resolveChatModelSelection({
   selectedModelId,
   modelVariants,
   missingVariantLabel,
-}: ResolveChatModelSelectionParams): AgentModelSelection {
+  userId,
+  byokConnections,
+  activeByokConnectionId,
+}: ResolveChatModelSelectionParams): Promise<AgentModelSelection> {
   const requestedModelId = selectedModelId ?? APP_DEFAULT_MODEL_ID;
   const selection = resolveModelSelection(requestedModelId, modelVariants);
 
@@ -32,6 +40,16 @@ export function resolveChatModelSelection({
     return { id: APP_DEFAULT_MODEL_ID as AgentModelSelection["id"] };
   }
 
+  // Check if BYOK config should be applied
+  let config: GatewayConfig | undefined;
+  if (userId && byokConnections) {
+    config = resolveModelToGatewayConfig(
+      availableModelId,
+      byokConnections,
+      activeByokConnectionId || null,
+    );
+  }
+
   return {
     id: availableModelId as AgentModelSelection["id"],
     ...(selection.providerOptionsByProvider
@@ -39,5 +57,6 @@ export function resolveChatModelSelection({
           providerOptionsOverrides: selection.providerOptionsByProvider,
         }
       : {}),
+    ...(config ? { config } : {}),
   };
 }

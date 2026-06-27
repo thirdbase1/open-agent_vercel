@@ -6,7 +6,10 @@ import {
   type JSONValue,
   type LanguageModel,
 } from "ai";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import type { AnthropicLanguageModelOptions } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { OpenAIResponsesProviderOptions } from "@ai-sdk/openai";
 
 function supportsAdaptiveAnthropicThinking(modelId: string): boolean {
@@ -87,9 +90,24 @@ export function mergeProviderOptions(
   return merged;
 }
 
+/**
+ * Wire format used to talk to a BYOK endpoint.
+ * - "gateway": Vercel AI Gateway protocol (default; uses `createGateway`).
+ * - "openai-compatible": OpenAI `/v1/chat/completions` style endpoints
+ *   (OpenRouter, DeepSeek, Qwen, GLM, MiniMax, xAI, Gemini OpenAI mode, etc.).
+ * - "anthropic": native Claude Messages API (`/v1/messages`).
+ */
+export type GatewayFormat = "gateway" | "openai-compatible" | "anthropic" | "gemini";
+
 export interface GatewayConfig {
   baseURL: string;
   apiKey: string;
+  /** Defaults to "gateway" for backwards compatibility. */
+  format?: GatewayFormat;
+  /** Optional extra headers sent with every request to the endpoint. */
+  headers?: Record<string, string>;
+  /** Display name used by the openai-compatible provider (defaults to "byok"). */
+  providerName?: string;
 }
 
 export interface GatewayOptions {
@@ -169,6 +187,54 @@ export function getProviderOptionsForModel(
   return providerOptions;
 }
 
+function buildBaseModel(
+  modelId: GatewayModelId,
+  config: GatewayConfig | undefined,
+  attributionHeaders: Record<string, string>,
+): LanguageModel {
+  if (!config) {
+    return createGateway({ headers: attributionHeaders })(modelId);
+  }
+
+  const format = config.format ?? "gateway";
+  const mergedHeaders = { ...attributionHeaders, ...(config.headers ?? {}) };
+
+  if (format === "openai-compatible") {
+    const provider = createOpenAICompatible({
+      name: config.providerName ?? "byok",
+      baseURL: config.baseURL,
+      apiKey: config.apiKey,
+      headers: mergedHeaders,
+    });
+    return provider(modelId);
+  }
+
+  if (format === "anthropic") {
+    const provider = createAnthropic({
+      baseURL: config.baseURL,
+      apiKey: config.apiKey,
+      headers: mergedHeaders,
+    });
+    return provider(modelId);
+  }
+
+  if (format === "gemini") {
+    const provider = createGoogleGenerativeAI({
+      apiKey: config.apiKey,
+      baseURL: config.baseURL,
+      headers: mergedHeaders,
+    });
+    return provider(modelId);
+  }
+
+  // Default: Vercel AI Gateway protocol on a custom base URL + key.
+  return createGateway({
+    baseURL: config.baseURL,
+    apiKey: config.apiKey,
+    headers: mergedHeaders,
+  })(modelId);
+}
+
 export function gateway(
   modelId: GatewayModelId,
   options: GatewayOptions = {},
@@ -180,15 +246,7 @@ export function gateway(
     "x-title": appName ?? "Open Agents",
   };
 
-  const baseGateway = config
-    ? createGateway({
-        baseURL: config.baseURL,
-        apiKey: config.apiKey,
-        headers: attributionHeaders,
-      })
-    : createGateway({ headers: attributionHeaders });
-
-  let model: LanguageModel = baseGateway(modelId);
+  let model: any = buildBaseModel(modelId, config, attributionHeaders);
 
   const providerOptions = getProviderOptionsForModel(
     modelId,

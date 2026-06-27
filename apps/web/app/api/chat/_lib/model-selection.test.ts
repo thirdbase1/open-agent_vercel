@@ -4,8 +4,8 @@ import { APP_DEFAULT_MODEL_ID } from "@/lib/models";
 import { resolveChatModelSelection } from "./model-selection";
 
 describe("resolveChatModelSelection", () => {
-  test("returns direct model ids unchanged", () => {
-    const selection = resolveChatModelSelection({
+  test("returns direct model ids unchanged", async () => {
+    const selection = await resolveChatModelSelection({
       selectedModelId: "openai/gpt-5",
       modelVariants: [],
       missingVariantLabel: "Selected model variant",
@@ -16,7 +16,7 @@ describe("resolveChatModelSelection", () => {
     });
   });
 
-  test("resolves variant ids with provider options", () => {
+  test("resolves variant ids with provider options", async () => {
     const modelVariants: ModelVariant[] = [
       {
         id: "variant:openai-medium",
@@ -28,7 +28,7 @@ describe("resolveChatModelSelection", () => {
       },
     ];
 
-    const selection = resolveChatModelSelection({
+    const selection = await resolveChatModelSelection({
       selectedModelId: "variant:openai-medium",
       modelVariants,
       missingVariantLabel: "Selected model variant",
@@ -45,8 +45,8 @@ describe("resolveChatModelSelection", () => {
     });
   });
 
-  test("resolves built-in OpenAI variants with store false", () => {
-    const selection = resolveChatModelSelection({
+  test("resolves built-in OpenAI variants with store false", async () => {
+    const selection = await resolveChatModelSelection({
       selectedModelId: "variant:builtin:gpt-5.4-xhigh",
       modelVariants: BUILT_IN_VARIANTS,
       missingVariantLabel: "Selected model variant",
@@ -64,7 +64,7 @@ describe("resolveChatModelSelection", () => {
     });
   });
 
-  test("falls back to the default model and warns when a variant is missing", () => {
+  test("falls back to the default model and warns when a variant is missing", async () => {
     const originalWarn = console.warn;
     const warnings: unknown[][] = [];
     console.warn = (...args: unknown[]) => {
@@ -72,7 +72,7 @@ describe("resolveChatModelSelection", () => {
     };
 
     try {
-      const selection = resolveChatModelSelection({
+      const selection = await resolveChatModelSelection({
         selectedModelId: "variant:missing",
         modelVariants: [],
         missingVariantLabel: "Selected model variant",
@@ -91,8 +91,8 @@ describe("resolveChatModelSelection", () => {
     }
   });
 
-  test("uses the default model when no model id is provided", () => {
-    const selection = resolveChatModelSelection({
+  test("uses the default model when no model id is provided", async () => {
+    const selection = await resolveChatModelSelection({
       selectedModelId: null,
       modelVariants: [],
       missingVariantLabel: "Selected model variant",

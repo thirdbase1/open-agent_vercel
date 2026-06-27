@@ -1,6 +1,23 @@
 import type { SandboxState } from "@open-agents/sandbox";
+import type { ByokFormat, ByokModel } from "@/lib/byok";
 import type { ModelVariant } from "@/lib/model-variants";
 import type { GlobalSkillRef } from "@/lib/skills/global-skill-refs";
+
+/**
+ * BYOK connection as persisted in the database. Differs from the client-facing
+ * `ByokConnection` in that the API key is stored encrypted (`apiKeyEnc`) and
+ * never exposed to the browser.
+ */
+export interface StoredByokConnection {
+  id: string;
+  name: string;
+  format: ByokFormat;
+  baseURL: string;
+  headers?: Record<string, string>;
+  models: ByokModel[];
+  /** AES-256-GCM encrypted API key, or null if none stored. */
+  apiKeyEnc: string | null;
+}
 import {
   boolean,
   index,
@@ -368,6 +385,11 @@ export const userPreferences = pgTable("user_preferences", {
     .$type<string[]>()
     .notNull()
     .default([]),
+  byokConnections: jsonb("byok_connections")
+    .$type<StoredByokConnection[]>()
+    .notNull()
+    .default([]),
+  byokActiveConnectionId: text("byok_active_connection_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
