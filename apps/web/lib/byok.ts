@@ -314,12 +314,12 @@ export const BYOK_PROVIDER_PRESETS: Record<string, ByokProviderPreset> = {
     documentationUrl: "https://ollama.ai/",
   },
 
-  // Anthropic format providers
-  "anthropic-claude": {
-    name: "Anthropic Claude",
-    description: "Claude models via native Anthropic Messages API",
+  // Anthropic format providers - USER MUST PROVIDE ENDPOINT
+  "anthropic-custom": {
+    name: "Anthropic (Custom Endpoint)",
+    description: "Claude models - you provide the endpoint URL. Typically https://api.anthropic.com/v1",
     format: "anthropic",
-    baseURL: "https://api.anthropic.com/v1",
+    baseURL: "", // User must fill this in
     documentationUrl: "https://docs.anthropic.com/claude/reference/getting-started-with-the-api",
   },
   "deepseek-anthropic": {
