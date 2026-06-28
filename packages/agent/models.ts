@@ -180,13 +180,14 @@ export function gateway(
     "x-title": appName ?? "Open Agents",
   };
 
-  const baseGateway = config
-    ? createGateway({
-        baseURL: config.baseURL,
-        apiKey: config.apiKey,
-        headers: attributionHeaders,
-      })
-    : createGateway({ headers: attributionHeaders });
+  const gatewayURL = process.env.FREEMODEL_BASE_URL || config?.baseURL;
+  const gatewayKey = process.env.FREEMODEL_API_KEY || config?.apiKey;
+
+  const baseGateway = createGateway({
+    ...(gatewayURL ? { baseURL: gatewayURL } : {}),
+    ...(gatewayKey ? { apiKey: gatewayKey } : {}),
+    headers: attributionHeaders,
+  });
 
   let model: LanguageModel = baseGateway(modelId);
 
