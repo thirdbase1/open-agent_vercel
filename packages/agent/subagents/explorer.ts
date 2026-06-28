@@ -1,6 +1,5 @@
 import type { LanguageModel } from "ai";
-import { stepCountIs, ToolLoopAgent } from "ai";
-import { gateway } from "../models";
+import { gateway, stepCountIs, ToolLoopAgent } from "ai";
 import { z } from "zod";
 import { bashTool } from "../tools/bash";
 import { globTool } from "../tools/glob";
