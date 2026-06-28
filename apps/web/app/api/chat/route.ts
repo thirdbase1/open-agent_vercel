@@ -151,6 +151,10 @@ export async function POST(req: Request) {
       maxSteps: 500,
       autoCommitEnabled: false,
       autoCreatePrEnabled: false,
+      inputMessagesPersisted: false,
+      selectedModelId: undefined,
+      modelId: undefined,
+      agentOptions: undefined,
     },
   ]);
 
