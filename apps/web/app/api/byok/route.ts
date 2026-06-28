@@ -55,41 +55,30 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    
-    // Validate basic required fields
-    if (!body.name || typeof body.name !== "string") {
-      return Response.json({ error: "Connection name is required" }, { status: 400 });
-    }
-    if (!body.format || typeof body.format !== "string") {
-      return Response.json({ error: "Format is required" }, { status: 400 });
-    }
-    if (!body.baseURL || typeof body.baseURL !== "string") {
-      return Response.json({ error: "Endpoint URL is required" }, { status: 400 });
-    }
-    if (!body.apiKey || typeof body.apiKey !== "string") {
-      return Response.json({ error: "API key is required" }, { status: 400 });
-    }
-
-    // Models can be an array of strings or array of objects
-    const models = Array.isArray(body.models) ? body.models : [];
+    const input = createByokConnectionInputSchema.parse(body);
 
     const connectionId = `byok:${nanoid()}`;
     const created = await upsertByokConnection(session.user.id, {
       id: connectionId,
-      name: body.name,
-      format: body.format,
-      baseURL: body.baseURL,
-      apiKey: body.apiKey,
-      headers: body.headers || {},
-      models: models,
+      name: input.name,
+      format: input.format,
+      baseURL: input.baseURL,
+      apiKey: input.apiKey,
+      headers: input.headers,
+      models: input.models,
     });
 
     return Response.json(created, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message.includes("validation")) {
+      return Response.json(
+        { error: `Invalid input: ${error.message}` },
+        { status: 400 }
+      );
+    }
     console.error("[BYOK POST]", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return Response.json(
-      { error: `Failed to create BYOK connection: ${errorMessage}` },
+      { error: "Failed to create BYOK connection" },
       { status: 500 }
     );
   }
