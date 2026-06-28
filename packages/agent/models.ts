@@ -99,6 +99,11 @@ export interface GatewayOptions {
   appUrl?: string;
 }
 
+export interface Gateway {
+  (modelId: GatewayModelId, options?: GatewayOptions): LanguageModel;
+  getAvailableModels(options?: GatewayOptions): Promise<{ models: any[] }>;
+}
+
 export type { GatewayModelId, LanguageModel, JSONValue };
 
 export function shouldApplyOpenAIReasoningDefaults(modelId: string): boolean {
@@ -169,40 +174,55 @@ export function getProviderOptionsForModel(
   return providerOptions;
 }
 
-export function gateway(
-  modelId: GatewayModelId,
-  options: GatewayOptions = {},
-): LanguageModel {
-  const { config, providerOptionsOverrides, appName, appUrl } = options;
+function createBaseGateway(options: GatewayOptions = {}) {
+  const { config, appName, appUrl } = options;
 
   const attributionHeaders = {
     "http-referer": appUrl ?? "https://open-agents.dev",
     "x-title": appName ?? "Open Agents",
   };
 
-  const baseGateway = config
-    ? createGateway({
-        baseURL: config.baseURL,
-        apiKey: config.apiKey,
-        headers: attributionHeaders,
-      })
-    : createGateway({ headers: attributionHeaders });
+  const gatewayURL = process.env.FREEMODEL_BASE_URL || config?.baseURL;
+  const gatewayKey = process.env.FREEMODEL_API_KEY || config?.apiKey;
 
-  let model: LanguageModel = baseGateway(modelId);
-
-  const providerOptions = getProviderOptionsForModel(
-    modelId,
-    providerOptionsOverrides,
-  );
-
-  if (Object.keys(providerOptions).length > 0) {
-    model = wrapLanguageModel({
-      model,
-      middleware: defaultSettingsMiddleware({
-        settings: { providerOptions },
-      }),
-    });
-  }
-
-  return model;
+  return createGateway({
+    ...(gatewayURL ? { baseURL: gatewayURL } : {}),
+    ...(gatewayKey ? { apiKey: gatewayKey } : {}),
+    headers: attributionHeaders,
+  });
 }
+
+export const gateway: Gateway = Object.assign(
+  function gateway(
+    modelId: GatewayModelId,
+    options: GatewayOptions = {},
+  ): LanguageModel {
+    const { providerOptionsOverrides } = options;
+
+    const baseGateway = createBaseGateway(options);
+
+    let model: LanguageModel = baseGateway(modelId);
+
+    const providerOptions = getProviderOptionsForModel(
+      modelId,
+      providerOptionsOverrides,
+    );
+
+    if (Object.keys(providerOptions).length > 0) {
+      model = wrapLanguageModel({
+        model,
+        middleware: defaultSettingsMiddleware({
+          settings: { providerOptions },
+        }),
+      });
+    }
+
+    return model;
+  },
+  {
+    getAvailableModels: async (options: GatewayOptions = {}) => {
+      const baseGateway = createBaseGateway(options);
+      return baseGateway.getAvailableModels();
+    },
+  },
+);
