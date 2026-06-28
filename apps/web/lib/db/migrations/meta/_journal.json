@@ -260,13 +260,6 @@
       "when": 1778835412125,
       "tag": "0036_faulty_yellow_claw",
       "breakpoints": true
-    },
-    {
-      "idx": 37,
-      "version": "7",
-      "when": 1782594821987,
-      "tag": "0037_add_byok_connections",
-      "breakpoints": true
     }
   ]
 }
