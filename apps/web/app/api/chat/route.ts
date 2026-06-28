@@ -149,6 +149,8 @@ export async function POST(req: Request) {
       authSession: session ?? null,
       assistantId: generateId(),
       maxSteps: 500,
+      autoCommitEnabled: false,
+      autoCreatePrEnabled: false,
     },
   ]);
 

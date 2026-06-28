@@ -22,6 +22,16 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
+  swcMinify: true,
+  webpack: (config, { isServer }) => {
+    // Ignore missing source maps from @workflow/serde beta package
+    config.ignoreWarnings = config.ignoreWarnings || [];
+    config.ignoreWarnings.push({
+      module: /@workflow\/serde/,
+      message: /failed to read input source map/,
+    });
+    return config;
+  },
 };
 
 export default withWorkflow(withBotId(nextConfig));
