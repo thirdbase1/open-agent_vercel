@@ -9,11 +9,6 @@ import {
   type ModelVariant,
 } from "@/lib/model-variants";
 import {
-  buildByokModelOptionId,
-  type ByokConnection,
-  type ByokModel,
-} from "@/lib/byok";
-import {
   getProviderFromModelId,
   stripProviderPrefix,
 } from "@/components/provider-icons";
@@ -65,29 +60,6 @@ function toVariantOption(
   };
 }
 
-/**
- * Build a picker option for a single BYOK model. The option id is the composite
- * "byok:model:<connectionId>:<modelId>" id, which the chat runtime parses back
- * into the connection (endpoint + key) and the provider-native model id.
- * Options are grouped under the connection name so they appear together.
- */
-function toByokModelOption(
-  connection: ByokConnection,
-  model: ByokModel,
-): ModelOption {
-  const id = buildByokModelOptionId(connection.id, model.modelId);
-  const label = model.name || model.modelId;
-  return {
-    id,
-    label,
-    shortLabel: label,
-    description: `${connection.name} (BYOK)`,
-    isVariant: false,
-    contextWindow: model.contextWindow,
-    provider: connection.name,
-  };
-}
-
 /** Providers pinned to the top of the list, in order. */
 const PRIORITY_PROVIDERS = ["anthropic", "openai"];
 
@@ -133,7 +105,6 @@ export function groupByProvider(options: ModelOption[]): ModelGroup[] {
 export function buildModelOptions(
   models: AvailableModel[],
   modelVariants: ModelVariant[],
-  byokConnections: ByokConnection[] = [],
 ): ModelOption[] {
   const baseModelOptions = models.map(toBaseModelOption);
   const baseModelsById = new Map(models.map((model) => [model.id, model]));
@@ -142,19 +113,14 @@ export function buildModelOptions(
     toVariantOption(variant, baseModelsById.get(variant.baseModelId)),
   );
 
-  const byokOptions = byokConnections.flatMap((connection) =>
-    connection.models.map((model) => toByokModelOption(connection, model)),
-  );
-
-  return [...baseModelOptions, ...variantOptions, ...byokOptions];
+  return [...baseModelOptions, ...variantOptions];
 }
 
 export function buildSessionChatModelOptions(
   models: AvailableModel[],
   modelVariants: ModelVariant[],
-  byokConnections: ByokConnection[] = [],
 ): ModelOption[] {
-  return buildModelOptions(models, modelVariants, byokConnections);
+  return buildModelOptions(models, modelVariants);
 }
 
 export function withMissingModelOption(
